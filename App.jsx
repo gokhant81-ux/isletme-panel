@@ -730,7 +730,7 @@ function CAnaSayfa(){
             <span style={{color:"#e94560",fontWeight:700,fontSize:12}}>{para(s.toplam_tutar)}</span>
           </div>
           <div style={{color:"#aaa",fontSize:11,marginTop:2}}>
-            {s.musteri_ad_soyad||"Kasadan"} · {new Date(s.satis_tarihi).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}
+            {s.musteri_ad_soyad||"Kasadan"} · {s.satis_tarihi?new Date(s.satis_tarihi).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"-"}
           </div>
         </div>))}
       </div>
@@ -1072,7 +1072,7 @@ function CSatisListesi(){
     <Tablo bas={["No","Saat","Müşteri","Ödeme","KDV","Tutar",""]}>
       {satislar.map((s,i)=>(<tr key={s.id} style={{borderBottom:"1px solid #f0f2f8",background:i%2===0?"transparent":"#fafbff"}}>
         <td style={td}>#{s.satis_no}</td>
-        <td style={td}>{new Date(s.satis_tarihi).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</td>
+        <td style={td}>{s.satis_tarihi?new Date(s.satis_tarihi).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"-"}</td>
         <td style={td}>{s.musteri_ad_soyad||"-"}</td>
         <td style={td}><Badge tip={s.odeme_turu}/></td>
         <td style={td}>{s.nakit_fis?"✅":"-"}</td>
