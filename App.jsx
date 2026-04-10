@@ -2486,7 +2486,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
   const bugunStr = bugun();
   // Kurye paneli: teslim edilmemiş + iptal olmayan TÜM siparişleri göster
   // (hem bugün hem gelecek tarihli, teslimat tarihsizler de dahil)
-  const kurye_siparisler = siparisler
+  const kurye_siparisler = guvenliSiparisler
     .filter(s=>s.durum!=="teslim_edildi"&&s.durum!=="iptal")
     .sort((a,b)=>{
       // Önce tarihe, sonra saate göre sırala
@@ -2502,7 +2502,13 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
   const [kuryeTel, setKuryeTel]=useState("");
   const [duzenleId, setDuzenleId]=useState(null);
 
-  const toplam=kalemler.reduce((t,k)=>t+k.toplam,0);
+  const toplam=kalemler.reduce((t,k)=>t+(k.toplam||0),0);
+
+  // Güvenli sipariş listesi — bozuk veri varsa atla
+  const guvenliSiparisler = siparisler.filter(s => {
+    try { if(s.kalemler && typeof s.kalemler === "string") JSON.parse(s.kalemler); return true; } catch { return false; }
+  });
+  if(guvenliSiparisler.length !== siparisler.length) console.warn(`⚠️ ${siparisler.length - guvenliSiparisler.length} sipariş bozuk JSON nedeniyle filtrelendi`);
 
   return(<div>
     {/* Başlık + Sekmeler */}
@@ -2604,9 +2610,9 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:16}}>
         {[
           {l:"Bugün Teslimat",v:kurye_siparisler.length,c:"#c2410c"},
-          {l:"Hazır Bekliyor",v:siparisler.filter(s=>s.durum==="hazir").length,c:"#10b981"},
-          {l:"Hazırlanıyor",v:siparisler.filter(s=>s.durum==="hazirlaniyor").length,c:"#3b82f6"},
-          {l:"Teslim Edildi",v:siparisler.filter(s=>s.durum==="teslim_edildi").length,c:"#8b5cf6"},
+          {l:"Hazır Bekliyor",v:guvenliSiparisler.filter(s=>s.durum==="hazir").length,c:"#10b981"},
+          {l:"Hazırlanıyor",v:guvenliSiparisler.filter(s=>s.durum==="hazirlaniyor").length,c:"#3b82f6"},
+          {l:"Teslim Edildi",v:guvenliSiparisler.filter(s=>s.durum==="teslim_edildi").length,c:"#8b5cf6"},
         ].map(s=>(
           <div key={s.l} style={krt}>
             <div style={{color:"#888",fontSize:11}}>{s.l}</div>
@@ -2657,12 +2663,12 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
         {Object.entries(DURUMLAR).map(([d,{l,c}])=>(
           <div key={d} style={krt}>
             <div style={{color:"#888",fontSize:11}}>{l}</div>
-            <div style={{color:c,fontWeight:700,fontSize:20,marginTop:4}}>{siparisler.filter(s=>s.durum===d).length}</div>
+            <div style={{color:c,fontWeight:700,fontSize:20,marginTop:4}}>{guvenliSiparisler.filter(s=>s.durum===d).length}</div>
           </div>
         ))}
       </div>
 
-      {siparisler.map((s)=>{
+      {guvenliSiparisler.map((s)=>{
         const kalemlArr=(()=>{try{return s.kalemler?JSON.parse(s.kalemler).filter(Boolean):[]}catch{return []}})();
         const saatFark=s.teslimat_saati&&s.teslimat_tarihi===bugunStr?(()=>{const[h,m]=s.teslimat_saati.split(":").map(Number);const hedef=new Date();hedef.setHours(h,m,0);return(hedef-now)/60000;})():null;
         const acilMi=saatFark!==null&&saatFark<90&&saatFark>0;
@@ -2697,7 +2703,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
           </div>
         </div>);
       })}
-      {!siparisler.length&&<div style={{textAlign:"center",padding:40,color:"#bbb",fontSize:14}}>Henüz sipariş yok. Üstten ekleyebilirsiniz.</div>}
+      {!guvenliSiparisler.length&&<div style={{textAlign:"center",padding:40,color:"#bbb",fontSize:14}}>Henüz sipariş yok. Üstten ekleyebilirsiniz.</div>}
     </div>}
   </div>);
 }
@@ -2806,7 +2812,7 @@ function Cicekci({kullanici,onGeri,onCikis}){
     {a==="anasayfa"&&<CAnaSayfa/>}
     {a==="satis"&&<CSatis k={kullanici}/>}
     {a==="satislar"&&<CSatisListesi/>}
-    {a==="siparisler"&&<CSiparisler k={kullanici} onGelMusteri={siparisMusteri} onGelMusteriTemizle={()=>setSiparisMusteri(null)}/>}
+    {a==="siparisler"&&<ErrorBoundary><CSiparisler k={kullanici} onGelMusteri={siparisMusteri} onGelMusteriTemizle={()=>setSiparisMusteri(null)}/></ErrorBoundary>}
     {a==="musteriler"&&<CMusteriler onSiparisAc={siparisAc}/>}
     {a==="stok"&&<CStok/>}
     {a==="fatura"&&<CFatura k={kullanici}/>}
