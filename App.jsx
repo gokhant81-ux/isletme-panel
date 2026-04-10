@@ -2476,7 +2476,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
   const kuryeWA=(s, kurye)=>{
     const tel=kurye?.replace(/\D/g,"").replace(/^0/,"");
     if(!tel){toast("Kurye telefonu girin!","uyari");return;}
-    const kalemStr=s.kalemler?JSON.parse(s.kalemler||"[]").map(x=>`• ${x.urun_adi} x${x.miktar}`).join("\n"):"";
+    const kalemStr=s.kalemler?(()=>{try{return JSON.parse(s.kalemler).map(x=>`• ${x.urun_adi} x${x.miktar}`).join("\n")}catch{return ""}})():"";
     const mesaj=`🚚 *Teslimat Görevi*\n\n👤 Müşteri: ${s.musteri_adi}\n📞 Tel: ${s.musteri_tel||"-"}\n📍 Adres: ${s.teslimat_adresi||"-"}\n⏰ Saat: ${s.teslimat_saati||"Belirtilmedi"}\n\n${kalemStr?`📦 Ürünler:\n${kalemStr}\n\n`:""}💰 Tutar: ${new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2}).format(s.toplam_tutar||0)} ₺\nÖdeme: ${s.odeme_turu||"Nakit"}\n\n🗺️ Harita: https://maps.google.com/?q=${encodeURIComponent(s.teslimat_adresi||"")}`;
     window.open(`whatsapp://send?phone=90${tel}&text=${encodeURIComponent(mesaj)}`,"_blank");
   };
@@ -2663,7 +2663,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
       </div>
 
       {siparisler.map((s)=>{
-        const kalemlArr=s.kalemler?JSON.parse(s.kalemler||"[]").filter(Boolean):[];
+        const kalemlArr=(()=>{try{return s.kalemler?JSON.parse(s.kalemler).filter(Boolean):[]}catch{return []}})();
         const saatFark=s.teslimat_saati&&s.teslimat_tarihi===bugunStr?(()=>{const[h,m]=s.teslimat_saati.split(":").map(Number);const hedef=new Date();hedef.setHours(h,m,0);return(hedef-now)/60000;})():null;
         const acilMi=saatFark!==null&&saatFark<90&&saatFark>0;
 
