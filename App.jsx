@@ -68,7 +68,7 @@ function Badge({tip,durum}){
 
 function Tablo({bas,children}){return(<div style={{background:"#fff",borderRadius:12,border:"1px solid #e8ebf5",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:400}}><thead><tr style={{borderBottom:"1px solid #e8ebf5",background:"#f8f9fc"}}>{bas.map(h=><th key={h} style={{padding:"12px 14px",color:"#666",fontSize:12.5,textAlign:"left",fontWeight:600,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div></div>);}
 
-function Modal({onKapat,children,genislik}){return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}><div style={{background:"#fff",border:"1px solid #dde1ec",borderRadius:16,padding:28,width:genislik||400,maxHeight:"90vh",overflow:"auto"}}>{children}<button onClick={onKapat} style={{...kbtn,marginTop:10}}>Kapat</button></div></div>);}
+function Modal({onKapat,children,genislik}){const [gece2]=useGeceModu();const T2=getTema(gece2);return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}><div style={{background:T2.card,border:`1px solid ${T2.border}`,borderRadius:16,padding:28,width:genislik||400,maxHeight:"90vh",overflow:"auto",color:T2.text}}>{children}<button onClick={onKapat} style={{...kbtn,marginTop:10,background:T2.card,color:T2.text2,borderColor:T2.border}}>Kapat</button></div></div>);}
 
 // Fiş yazdır
 function cicekFisYazdir(satis, kalemler, ayarlar={}) {
@@ -120,9 +120,38 @@ function cicekFisYazdir(satis, kalemler, ayarlar={}) {
 if (typeof document !== "undefined" && !document.getElementById("app-anim-css")) {
   const s = document.createElement("style");
   s.id = "app-anim-css";
-  s.textContent = "@keyframes salla{0%,100%{transform:rotate(0deg)}25%{transform:rotate(10deg)}75%{transform:rotate(-10deg)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}";
+  s.textContent = "@keyframes salla{0%,100%{transform:rotate(0deg)}25%{transform:rotate(10deg)}75%{transform:rotate(-10deg)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(40px)}}";
   document.head.appendChild(s);
 }
+
+// ── GLOBAL TOAST BİLDİRİM SİSTEMİ ──────────────────────────
+function toast(mesaj, tip = "basari", sure = 3500) {
+  if (typeof document === "undefined") return;
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.style.cssText = "position:fixed;top:16px;right:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(400px,calc(100vw - 32px));";
+    document.body.appendChild(container);
+  }
+  const renkler = {
+    basari: { bg: "#f0fdf4", border: "#86efac", color: "#15803d", icon: "✅" },
+    hata: { bg: "#fef2f2", border: "#fca5a5", color: "#dc2626", icon: "❌" },
+    uyari: { bg: "#fffbeb", border: "#fde68a", color: "#92400e", icon: "⚠️" },
+    bilgi: { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8", icon: "ℹ️" },
+  };
+  const r = renkler[tip] || renkler.bilgi;
+  const el = document.createElement("div");
+  el.style.cssText = `background:${r.bg};border:1.5px solid ${r.border};color:${r.color};padding:12px 18px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.12);pointer-events:auto;display:flex;align-items:center;gap:8px;animation:toastIn 0.3s ease;font-family:'Segoe UI',sans-serif;cursor:pointer;`;
+  el.innerHTML = `<span style="font-size:16px;flex-shrink:0">${r.icon}</span><span style="flex:1">${mesaj}</span>`;
+  el.onclick = () => { el.style.animation = "toastOut 0.25s ease forwards"; setTimeout(() => el.remove(), 250); };
+  container.appendChild(el);
+  setTimeout(() => {
+    if (el.parentNode) { el.style.animation = "toastOut 0.3s ease forwards"; setTimeout(() => el.remove(), 300); }
+  }, sure);
+}
+// Toast'u global yap — KT.jsx'ten de erişilebilsin
+if (typeof window !== "undefined") window.toast = toast;
 
 // ─── GECE/GÜNDÜZ MODU ─────────────────────────────────────
 function useGeceModu() {
@@ -171,7 +200,7 @@ function Giris({onGiris}){
   const giris=async(e)=>{
     e.preventDefault();setY(true);setH("");
     const{data}=await supabase.from("kullanicilar").select("*").eq("kullanici_adi",k).single();
-    if(!data||(s!=="admin123"&&data.sifre_hash!==s)){setH("Hatalı kullanıcı adı veya şifre.");setY(false);return;}
+    if(!data||data.sifre_hash!==s){setH("Hatalı kullanıcı adı veya şifre.");setY(false);return;}
     const bitis=new Date();bitis.setHours(bitis.getHours()+6);
     localStorage.setItem("kt_kullanici",JSON.stringify(data));
     localStorage.setItem("kt_oturum_bitis",bitis.toISOString());
@@ -505,32 +534,32 @@ function Layout({baslik,emoji,menu,aktif,setAktif,onGeri,onCikis,kullanici,child
         </div>
       </div>
 
-      {/* ÇEKMECE MENÜ — Beyaz */}
-      {menuAcik&&<div onClick={()=>setMenuAcik(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:200}}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,zIndex:300,width:270,background:"#fff",display:"flex",flexDirection:"column",transform:menuAcik?"translateX(0)":"translateX(-100%)",transition:"transform 0.25s ease",boxShadow:"4px 0 24px rgba(0,0,0,0.12)"}}>
-        <div style={{padding:"20px 18px 14px",borderBottom:"1px solid #f0f2f8",display:"flex",justifyContent:"space-between",alignItems:"center",background:"linear-gradient(135deg,#667eea,#764ba2)"}}>
+      {/* ÇEKMECE MENÜ — Tema Uyumlu */}
+      {menuAcik&&<div onClick={()=>setMenuAcik(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:200}}/>}
+      <div style={{position:"fixed",top:0,left:0,bottom:0,zIndex:300,width:270,background:T.card,display:"flex",flexDirection:"column",transform:menuAcik?"translateX(0)":"translateX(-100%)",transition:"transform 0.25s ease",boxShadow:`4px 0 24px ${T.shadow}`}}>
+        <div style={{padding:"20px 18px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",background:"linear-gradient(135deg,#667eea,#764ba2)"}}>
           <div>
             <div style={{fontSize:28}}>{emoji}</div>
-            <div style={{color:"#1a1a2e",fontWeight:700,fontSize:16,marginTop:4}}>{baslik}</div>
-            <div style={{color:"#555",fontSize:12,marginTop:2}}>👤 {kullanici?.ad_soyad}</div>
+            <div style={{color:"#fff",fontWeight:700,fontSize:16,marginTop:4}}>{baslik}</div>
+            <div style={{color:"rgba(255,255,255,0.8)",fontSize:12,marginTop:2}}>👤 {kullanici?.ad_soyad}</div>
           </div>
-          <button onClick={()=>setMenuAcik(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#1a1a2e",cursor:"pointer",fontSize:20,padding:"4px 8px",borderRadius:8}}>✕</button>
+          <button onClick={()=>setMenuAcik(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",cursor:"pointer",fontSize:20,padding:"4px 8px",borderRadius:8}}>✕</button>
         </div>
-        <nav style={{flex:1,overflowY:"auto",paddingTop:8,paddingBottom:8}}>
+        <nav style={{flex:1,overflowY:"auto",paddingTop:8,paddingBottom:8,background:T.card}}>
           {menu.map(m=>(
             <button key={m.k} onClick={()=>{setAktif(m.k);setMenuAcik(false);}}
               style={{width:"100%",padding:"13px 18px",border:"none",textAlign:"left",
-                background:aktif===m.k?"#f0f7ff":"transparent",
+                background:aktif===m.k?(gece?"rgba(233,69,96,0.12)":"#f0f7ff"):"transparent",
                 borderLeft:aktif===m.k?"4px solid #e94560":"4px solid transparent",
-                color:aktif===m.k?"#e94560":"#333",cursor:"pointer",fontSize:14.5,
+                color:aktif===m.k?"#e94560":T.text,cursor:"pointer",fontSize:14.5,
                 display:"flex",alignItems:"center",gap:12,fontWeight:aktif===m.k?600:400}}>
               <span style={{fontSize:19,width:24,textAlign:"center"}}>{m.i}</span>{m.l}
             </button>
           ))}
         </nav>
-        <div style={{padding:"12px 16px",borderTop:"1px solid #f0f2f8",display:"flex",flexDirection:"column",gap:8}}>
-          <button onClick={()=>{onGeri();setMenuAcik(false);}} style={{...kbtn,fontSize:13,width:"100%"}}>← Ana Menü</button>
-          <button onClick={onCikis} style={{...kbtn,fontSize:13,color:"#cf1322",borderColor:"#ffa39e",background:"#fff1f0",width:"100%"}}>Çıkış Yap</button>
+        <div style={{padding:"12px 16px",borderTop:`1px solid ${T.border}`,display:"flex",flexDirection:"column",gap:8,background:T.card}}>
+          <button onClick={()=>{onGeri();setMenuAcik(false);}} style={{...kbtn,fontSize:13,width:"100%",background:T.card,color:T.text2,borderColor:T.border}}>← Ana Menü</button>
+          <button onClick={onCikis} style={{...kbtn,fontSize:13,color:"#cf1322",borderColor:"#ffa39e",background:gece?"rgba(220,38,38,0.1)":"#fff1f0",width:"100%"}}>Çıkış Yap</button>
         </div>
       </div>
 
@@ -539,12 +568,12 @@ function Layout({baslik,emoji,menu,aktif,setAktif,onGeri,onCikis,kullanici,child
         {children}
       </div>
 
-      {/* ALT NAV — Beyaz */}
-      <div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:"#fff",borderTop:"1px solid #e8ebf5",zIndex:100,boxShadow:"0 -2px 10px rgba(0,0,0,0.06)"}}>
+      {/* ALT NAV — Tema Uyumlu */}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:T.card,borderTop:`1px solid ${T.border}`,zIndex:100,boxShadow:`0 -2px 10px ${T.shadow}`}}>
         {menu.slice(0,5).map(m=>(
           <button key={m.k} onClick={()=>setAktif(m.k)}
             style={{flex:1,padding:"7px 2px 9px",border:"none",background:"none",
-              color:aktif===m.k?"#e94560":"#888",cursor:"pointer",
+              color:aktif===m.k?"#e94560":T.text3,cursor:"pointer",
               display:"flex",flexDirection:"column",alignItems:"center",gap:1,
               borderTop:aktif===m.k?"2px solid #e94560":"2px solid transparent"}}>
             <span style={{fontSize:21}}>{m.i}</span>
@@ -552,7 +581,7 @@ function Layout({baslik,emoji,menu,aktif,setAktif,onGeri,onCikis,kullanici,child
           </button>
         ))}
         <button onClick={()=>setMenuAcik(true)}
-          style={{flex:1,padding:"7px 2px 9px",border:"none",background:"none",color:"#888",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,borderTop:"2px solid transparent"}}>
+          style={{flex:1,padding:"7px 2px 9px",border:"none",background:"none",color:T.text3,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,borderTop:"2px solid transparent"}}>
           <span style={{fontSize:21}}>⋯</span>
           <span style={{fontSize:9.5}}>Daha</span>
         </button>
@@ -655,7 +684,7 @@ function CAnaSayfa(){
         <div style={{color:s.c,fontWeight:700,fontSize:16,marginTop:3}}>{s.v}</div>
       </div>))}
     </div>}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
       <div>
         <h3 style={{color:"#666",fontSize:13,marginBottom:10}}>⚠️ Düşük Stok ({dusukStok.length})</h3>
         {dusukStok.length===0?<p style={{color:"#ccc",fontSize:13}}>✅ Tüm stoklar yeterli</p>:
@@ -731,9 +760,9 @@ function CSatis({k}){
   const hFil=hesaplar.filter(h=>h.hesap_turu===(odeme==="kredi_karti"?"kredi_karti":odeme==="havale"?"havale":"nakit"));
 
   const kaydet=async()=>{
-    if(!sepet.length)return alert("Sepet boş!");
-    if((odeme==="havale"||odeme==="kredi_karti")&&!hesapId)return alert("Hesap seçin!");
-    if(odeme==="veresiye"&&!musteriAd)return alert("Müşteri adı girin!");
+    if(!sepet.length)return toast("Sepet boş!","uyari");
+    if((odeme==="havale"||odeme==="kredi_karti")&&!hesapId)return toast("Hesap seçin!","uyari");
+    if(odeme==="veresiye"&&!musteriAd)return toast("Müşteri adı girin!","uyari");
     const{data:s}=await supabase.from("cicek_satislar").insert({
       musteri_id:musteriId||null,musteri_ad_soyad:musteriAd||null,
       odeme_turu:odeme,hesap_id:hesapId||null,
@@ -772,7 +801,7 @@ function CSatis({k}){
       <span>✅ Satış kaydedildi! #{sonSatis?.satis_no}</span>
       <button onClick={()=>sonSatis&&cicekFisYazdir(sonSatis,sonKalemler)} style={{...kbtn,fontSize:11,color:"#00c864",borderColor:"rgba(0,200,100,0.3)"}}>🖨️ Fiş Yazdır</button>
     </div>}
-    <div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:24}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:24}}>
       <div>
         <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
           <input value={ara} onChange={e=>setAra(e.target.value)} placeholder="🔍 Ürün ara..." style={{...inp,flex:1,minWidth:150}}/>
@@ -881,19 +910,66 @@ function CSatis({k}){
 
 // SATIŞ LİSTESİ
 function CSatisListesi(){
-  const [satislar,setSatislar]=useState([]);const [ft,setFt]=useState(bugun());const [fo,setFo]=useState("hepsi");
+  const [satislar,setSatislar]=useState([]);const [ft,setFt]=useState(bugun());const [ftBit,setFtBit]=useState(bugun());const [aralikMod,setAralikMod]=useState(false);const [fo,setFo]=useState("hepsi");
   const [secili,setSecili]=useState(null);const [seciliKalemler,setSeciliKalemler]=useState([]);
   const [duzenleMod,setDuzenleMod]=useState(false);
   const [duzenleForm,setDuzenleForm]=useState({});
+  const [excelYukleniyor,setExcelYukleniyor]=useState(false);
 
   const yukle=()=>{
-    let q=supabase.from("cicek_satislar").select("*,hesap_adlari(hesap_adi)").gte("satis_tarihi",ft+"T00:00:00").lte("satis_tarihi",ft+"T23:59:59").order("satis_tarihi",{ascending:false});
+    const bas=ft;const bit=aralikMod?ftBit:ft;
+    let q=supabase.from("cicek_satislar").select("*,hesap_adlari(hesap_adi)").gte("satis_tarihi",bas+"T00:00:00").lte("satis_tarihi",bit+"T23:59:59").order("satis_tarihi",{ascending:false});
     if(fo!=="hepsi")q=q.eq("odeme_turu",fo);
     q.then(({data})=>setSatislar(data||[]));
   };
 
-  useEffect(()=>{yukle();},[ft,fo]);
-  useRealtimeYenile(["cicek_satislar"],yukle,[ft,fo]);
+  useEffect(()=>{yukle();},[ft,ftBit,aralikMod,fo]);
+  useRealtimeYenile(["cicek_satislar"],yukle,[ft,ftBit,aralikMod,fo]);
+
+  // Çiçekçi Excel Export
+  const cicekExcelIndir=async()=>{
+    setExcelYukleniyor(true);
+    try{
+      const XLSX=await (async()=>{if(window.XLSX)return window.XLSX;return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";s.onload=()=>res(window.XLSX);s.onerror=rej;document.head.appendChild(s);});})();
+      const bas=ft;const bit=aralikMod?ftBit:ft;
+      const dosyaAdi=`Cicekci_Satislar_${bas}${aralikMod?"_"+bit:""}.xlsx`;
+      const paraFmt=(n)=>new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2}).format(n||0);
+      const tarihFmt=(d)=>d?new Date(d).toLocaleDateString("tr-TR"):"-";
+      const odemeYaz=(o)=>({nakit:"Nakit",kredi_karti:"Kredi Kartı",havale:"Havale/EFT",veresiye:"Veresiye"}[o]||o||"-");
+
+      // Satış listesi
+      const satisSheet=satislar.map(s=>({
+        "Satış No":"#"+s.satis_no,"Tarih":tarihFmt(s.satis_tarihi),
+        "Saat":new Date(s.satis_tarihi).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),
+        "Müşteri":s.musteri_ad_soyad||"-","Ödeme Türü":odemeYaz(s.odeme_turu),
+        "KDV Fişi":s.nakit_fis?"Evet":"Hayır","KDV (₺)":paraFmt(s.kdv_tutari),
+        "Toplam (₺)":paraFmt(s.toplam_tutar),"Not":s.notlar||"",
+      }));
+
+      // Özet hesapla
+      const exOz=satislar.reduce((t,s)=>({toplam:t.toplam+s.toplam_tutar,nakit:t.nakit+(s.odeme_turu==="nakit"?s.toplam_tutar:0),kart:t.kart+(s.odeme_turu==="kredi_karti"?s.toplam_tutar:0),havale:t.havale+(s.odeme_turu==="havale"?s.toplam_tutar:0),veresiye:t.veresiye+(s.odeme_turu==="veresiye"?s.toplam_tutar:0)}),{toplam:0,nakit:0,kart:0,havale:0,veresiye:0});
+      const ozet=[
+        {Alan:"Dönem",Değer:aralikMod?`${bas} - ${bit}`:bas},
+        {Alan:"Toplam Satış",Değer:satislar.length},
+        {Alan:"Toplam Ciro (₺)",Değer:paraFmt(exOz.toplam)},
+        {Alan:"Nakit (₺)",Değer:paraFmt(exOz.nakit)},
+        {Alan:"Kart (₺)",Değer:paraFmt(exOz.kart)},
+        {Alan:"Havale (₺)",Değer:paraFmt(exOz.havale)},
+        {Alan:"Veresiye (₺)",Değer:paraFmt(exOz.veresiye)},
+        {Alan:"Rapor Tarihi",Değer:new Date().toLocaleString("tr-TR")},
+      ];
+
+      const wb=XLSX.utils.book_new();
+      const wsOzet=XLSX.utils.json_to_sheet(ozet);wsOzet["!cols"]=[{wch:22},{wch:22}];
+      const wsSatislar=XLSX.utils.json_to_sheet(satisSheet.length?satisSheet:[{Bilgi:"Bu dönemde satış yok."}]);
+      wsSatislar["!cols"]=[{wch:10},{wch:14},{wch:8},{wch:22},{wch:14},{wch:10},{wch:12},{wch:14},{wch:24}];
+      XLSX.utils.book_append_sheet(wb,wsOzet,"Özet");
+      XLSX.utils.book_append_sheet(wb,wsSatislar,"Satışlar");
+      XLSX.writeFile(wb,dosyaAdi);
+      toast("Excel indirildi!","basari");
+    }catch(e){toast("Excel hatası: "+e.message,"hata");}
+    setExcelYukleniyor(false);
+  };
 
   const satisAc=async(s)=>{
     const{data}=await supabase.from("cicek_satis_kalemleri").select("*").eq("satis_id",s.id);
@@ -910,22 +986,50 @@ function CSatisListesi(){
       nakit_fis:duzenleForm.nakit_fis,
     }).eq("id",secili.id);
     setDuzenleMod(false);setSecili(null);yukle();
-    alert("✅ Satış güncellendi!");
+    toast("Satış güncellendi!","basari");
   };
 
   const satisSil=async(s)=>{
     if(!confirm(`#${s.satis_no} numaralı satışı silmek istediğinizden emin misiniz?\n${para(s.toplam_tutar)}`))return;
+    // Stok geri yükleme — silinen satışın kalemlerini stoka geri ekle
+    const{data:kalemlerData}=await supabase.from("cicek_satis_kalemleri").select("*").eq("satis_id",s.id);
+    if(kalemlerData){
+      for(const kl of kalemlerData){
+        if(kl.urun_id){
+          const{data:u}=await supabase.from("cicek_urunler").select("stok_miktari").eq("id",kl.urun_id).single();
+          if(u){
+            const yeniStok=(u.stok_miktari||0)+(kl.miktar||0);
+            await supabase.from("cicek_urunler").update({stok_miktari:yeniStok}).eq("id",kl.urun_id);
+            await supabase.from("cicek_stok_hareketleri").insert({urun_id:kl.urun_id,hareket_turu:"duzeltme",miktar:kl.miktar||0,onceki_stok:u.stok_miktari,sonraki_stok:yeniStok,aciklama:`Satış silindi: #${s.satis_no}`});
+          }
+        }
+      }
+    }
+    // Veresiye kaydı varsa sil
+    if(s.odeme_turu==="veresiye") await supabase.from("cicek_cari").delete().eq("satis_id",s.id);
     await supabase.from("cicek_satis_kalemleri").delete().eq("satis_id",s.id);
     await supabase.from("cicek_satislar").delete().eq("id",s.id);
     setSecili(null);yukle();
+    toast("Satış silindi, stok geri yüklendi","basari");
   };
 
   const oz=satislar.reduce((t,s)=>({toplam:t.toplam+s.toplam_tutar,nakit:t.nakit+(s.odeme_turu==="nakit"?s.toplam_tutar:0),kart:t.kart+(s.odeme_turu==="kredi_karti"?s.toplam_tutar:0),havale:t.havale+(s.odeme_turu==="havale"?s.toplam_tutar:0),veresiye:t.veresiye+(s.odeme_turu==="veresiye"?s.toplam_tutar:0)}),{toplam:0,nakit:0,kart:0,havale:0,veresiye:0});
 
   return(<div>
-    <h2 style={bstl}>📋 Satış Listesi</h2>
-    <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+      <h2 style={{...bstl,margin:0}}>📋 Satış Listesi</h2>
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <button onClick={()=>setAralikMod(!aralikMod)} style={{...kbtn,fontSize:12,background:aralikMod?"rgba(233,69,96,0.08)":"transparent",color:aralikMod?"#e94560":"#666",borderColor:aralikMod?"rgba(233,69,96,0.4)":"#dde1ec"}}>
+          {aralikMod?"📅 Aralık":"📅 Tek Gün"}
+        </button>
+        <button onClick={cicekExcelIndir} disabled={excelYukleniyor} style={{...kbtn,background:"#16a34a",color:"#fff",border:"none",fontWeight:600,fontSize:12,opacity:excelYukleniyor?0.7:1}}>
+          {excelYukleniyor?"⏳ Hazırlanıyor...":"📥 Excel İndir"}
+        </button>
+      </div>
+    </div>
+    <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <input type="date" value={ft} onChange={e=>setFt(e.target.value)} style={{...inp,width:"auto"}}/>
+      {aralikMod&&<><span style={{color:"#888",fontSize:13}}>→</span><input type="date" value={ftBit} onChange={e=>setFtBit(e.target.value)} style={{...inp,width:"auto"}}/></>}
       <select value={fo} onChange={e=>setFo(e.target.value)} style={{...inp,width:"auto"}}>
         <option value="hepsi">Tümü</option><option value="nakit">Nakit</option><option value="kredi_karti">Kart</option><option value="havale">Havale</option><option value="veresiye">Veresiye</option>
       </select>
@@ -1042,7 +1146,7 @@ function CStok(){
 
   // Inline düzenleme kaydet
   const duzenleKaydet=async(id)=>{
-    if(!duzenleData.satis_fiyati)return alert("Satış fiyatı gerekli!");
+    if(!duzenleData.satis_fiyati)return toast("Satış fiyatı gerekli!","uyari");
     const eskiStok=urunler.find(u=>u.id===id)?.stok_miktari||0;
     const yeniStok=+duzenleData.stok_miktari||0;
     await supabase.from("cicek_urunler").update({
@@ -1063,7 +1167,7 @@ function CStok(){
   };
 
   const urunKaydet=async()=>{
-    if(!form.urun_adi)return alert("Ürün adı girin!");
+    if(!form.urun_adi)return toast("Ürün adı girin!","uyari");
     const otoBarkod="CK"+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
     const barkod=form.barkod||otoBarkod;
     await supabase.from("cicek_urunler").insert({...form,barkod,kategori_id:katId||null,satis_fiyati:+form.satis_fiyati,alis_fiyati:+form.alis_fiyati,stok_miktari:+form.stok_miktari});
@@ -1075,7 +1179,7 @@ function CStok(){
   };
 
   const stokGiris=async()=>{
-    if(!girisForm.urun_id||!girisForm.miktar)return alert("Ürün ve miktar girin!");
+    if(!girisForm.urun_id||!girisForm.miktar)return toast("Ürün ve miktar girin!","uyari");
     const u=urunler.find(x=>x.id===girisForm.urun_id);
     const onceki=u?.stok_miktari||0;const sonraki=onceki+ +girisForm.miktar;
     await supabase.from("cicek_urunler").update({stok_miktari:sonraki,alis_fiyati:girisForm.birim_fiyat?+girisForm.birim_fiyat:(u?.alis_fiyati||0)}).eq("id",girisForm.urun_id);
@@ -1086,7 +1190,7 @@ function CStok(){
   };
 
   const zaiyatKaydet=async()=>{
-    if(!zaiyatForm.urun_id||!zaiyatForm.miktar)return alert("Ürün ve miktar girin!");
+    if(!zaiyatForm.urun_id||!zaiyatForm.miktar)return toast("Ürün ve miktar girin!","uyari");
     const u=urunler.find(x=>x.id===zaiyatForm.urun_id);
     const onceki=u?.stok_miktari||0;const sonraki=Math.max(0,onceki- +zaiyatForm.miktar);
     await supabase.from("cicek_urunler").update({stok_miktari:sonraki}).eq("id",zaiyatForm.urun_id);
@@ -1097,7 +1201,7 @@ function CStok(){
   };
 
   const receteKaydet=async()=>{
-    if(!receteUrunId||!receteKalemler.length)return alert("Ürün ve en az bir malzeme seçin!");
+    if(!receteUrunId||!receteKalemler.length)return toast("Ürün ve en az bir malzeme seçin!","uyari");
     // Mevcut reçeteyi sil, yenisini ekle
     await supabase.from("cicek_urun_receteleri").delete().eq("urun_id",receteUrunId);
     await supabase.from("cicek_urun_receteleri").insert(receteKalemler.filter(k=>k.malzeme_id&&k.miktar>0).map(k=>({urun_id:receteUrunId,malzeme_id:k.malzeme_id,miktar:+k.miktar})));
@@ -1450,7 +1554,7 @@ function CFatura({k}){
   };
 
   const kaydet=async()=>{
-    if(!kalemler.length)return alert("En az bir kalem ekleyin!");
+    if(!kalemler.length)return toast("En az bir kalem ekleyin!","uyari");
     const t=kalemler.reduce((x,k)=>x+k.toplam,0);
     const kd=kalemler.reduce((x,k)=>x+k.toplam*(k.kdv_orani||8)/(100+(k.kdv_orani||8)),0);
     const{data:f}=await supabase.from("cicek_faturalar").insert({...form,hesap_id:hesapId||null,toplam_tutar:t,kdv_tutari:kd}).select().single();
@@ -1473,7 +1577,7 @@ function CFatura({k}){
       }
     }
     setAcik(false);setKalemler([]);setOcrSonuc(null);setOcrOnizleme(null);yukle();
-    alert(`✅ Fatura kaydedildi! Toplam: ${para(t)}`);
+    toast(`Fatura kaydedildi! Toplam: ${para(t)}`,"basari");
   };
 
   return(<div>
@@ -1714,7 +1818,7 @@ function KDV({isletme}){
   const [ay,setAy]=useState(new Date().toISOString().slice(0,7));const [satislar,setSatislar]=useState([]);const [giderler,setGiderler]=useState([]);
   useEffect(()=>{const b=ay+"-01",bi=ay+"-31";if(isletme==="cicekci")supabase.from("cicek_satislar").select("*").gte("satis_tarihi",b).lte("satis_tarihi",bi+"T23:59:59").then(({data})=>setSatislar(data||[]));supabase.from("giderler").select("*").gte("harcama_tarihi",b).lte("harcama_tarihi",bi).then(({data})=>setGiderler(data||[]));}, [ay,isletme]);
   const nkdv=satislar.filter(s=>s.nakit_fis).reduce((t,s)=>t+s.kdv_tutari,0);const gkdv=giderler.reduce((t,g)=>t+(g.kdv_tutari||0),0);
-  return(<div><h2 style={bstl}>🧾 KDV & Rapor</h2><input type="month" value={ay} onChange={e=>setAy(e.target.value)} style={{...inp,width:"auto",marginBottom:24}}/><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><div style={krt}><h3 style={{color:"#888",fontSize:13,margin:"0 0 14px"}}>SATIŞ ÖZET</h3>{[{l:"Toplam Satış",v:satislar.reduce((t,s)=>t+s.toplam_tutar,0),c:"#00c864"},{l:"Nakit",v:satislar.filter(s=>s.odeme_turu==="nakit").reduce((t,s)=>t+s.toplam_tutar,0),c:"#fff"},{l:"Kart",v:satislar.filter(s=>s.odeme_turu==="kredi_karti").reduce((t,s)=>t+s.toplam_tutar,0),c:"#4ea8de"},{l:"Veresiye",v:satislar.filter(s=>s.odeme_turu==="veresiye").reduce((t,s)=>t+s.toplam_tutar,0),c:"#ff6b6b"}].map(r=>(<div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:"#777",fontSize:13}}>{r.l}</span><span style={{color:r.c,fontWeight:500}}>{para(r.v)}</span></div>))}</div><div style={krt}><h3 style={{color:"#888",fontSize:13,margin:"0 0 14px"}}>KDV</h3>{[{l:"Fiş Kesilen KDV",v:nkdv,c:"#ffa500"},{l:"Gider KDV (indirim)",v:gkdv,c:"#4ea8de"},{l:"ÖDENECEK KDV",v:nkdv-gkdv,c:(nkdv-gkdv)>0?"#ff6b6b":"#00c864",b:true}].map(r=>(<div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:"#777",fontSize:13}}>{r.l}</span><span style={{color:r.c,fontWeight:r.b?700:500}}>{para(r.v)}</span></div>))}</div></div></div>);
+  return(<div><h2 style={bstl}>🧾 KDV & Rapor</h2><input type="month" value={ay} onChange={e=>setAy(e.target.value)} style={{...inp,width:"auto",marginBottom:24}}/><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><div style={krt}><h3 style={{color:"#888",fontSize:13,margin:"0 0 14px"}}>SATIŞ ÖZET</h3>{[{l:"Toplam Satış",v:satislar.reduce((t,s)=>t+s.toplam_tutar,0),c:"#00c864"},{l:"Nakit",v:satislar.filter(s=>s.odeme_turu==="nakit").reduce((t,s)=>t+s.toplam_tutar,0),c:"#00a854"},{l:"Kart",v:satislar.filter(s=>s.odeme_turu==="kredi_karti").reduce((t,s)=>t+s.toplam_tutar,0),c:"#4ea8de"},{l:"Veresiye",v:satislar.filter(s=>s.odeme_turu==="veresiye").reduce((t,s)=>t+s.toplam_tutar,0),c:"#ff6b6b"}].map(r=>(<div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:"#777",fontSize:13}}>{r.l}</span><span style={{color:r.c,fontWeight:500}}>{para(r.v)}</span></div>))}</div><div style={krt}><h3 style={{color:"#888",fontSize:13,margin:"0 0 14px"}}>KDV</h3>{[{l:"Fiş Kesilen KDV",v:nkdv,c:"#ffa500"},{l:"Gider KDV (indirim)",v:gkdv,c:"#4ea8de"},{l:"ÖDENECEK KDV",v:nkdv-gkdv,c:(nkdv-gkdv)>0?"#ff6b6b":"#00c864",b:true}].map(r=>(<div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{color:"#777",fontSize:13}}>{r.l}</span><span style={{color:r.c,fontWeight:r.b?700:500}}>{para(r.v)}</span></div>))}</div></div></div>);
 }
 
 function Hatirlaticilar({k}){
@@ -1743,8 +1847,8 @@ function Gider({k,isletme}){
   useEffect(()=>{supabase.from("giderler").select("*,hesap_adlari!giderler_hesap_id_fkey(hesap_adi)").gte("harcama_tarihi",ay+"-01").lte("harcama_tarihi",ay+"-31").order("harcama_tarihi",{ascending:false}).then(({data})=>setGiderler(data||[]));}, [ay]);
 
   const kaydet=async()=>{
-    if(!form.tutar||+form.tutar<=0){alert("Tutar girilmedi!");return;}
-    if(!form.odeme_turu){alert("Ödeme türü seçilmeli!");return;}
+    if(!form.tutar||+form.tutar<=0){toast("Tutar girilmedi!","uyari");return;}
+    if(!form.odeme_turu){toast("Ödeme türü seçilmeli!","uyari");return;}
 
     const bugunStr=form.harcama_tarihi||bugun();
     // islem_turu DB'de YOK — form'dan çıkar
@@ -1760,7 +1864,7 @@ function Gider({k,isletme}){
       kullanici_id:k?.id,
     });
 
-    if(error){alert("❌ Kayıt hatası: "+error.message);return;}
+    if(error){toast("Kayıt hatası: "+error.message,"hata");return;}
 
     setAcik(false);setOcrOnizleme(null);setOcrSonuc(null);
     supabase.from("giderler").select("*,hesap_adlari!giderler_hesap_id_fkey(hesap_adi)").gte("harcama_tarihi",ay+"-01").lte("harcama_tarihi",ay+"-31").order("harcama_tarihi",{ascending:false}).then(({data})=>setGiderler(data||[]));
@@ -1907,7 +2011,7 @@ function Gider({k,isletme}){
                 {l:"İşletme",v:ocrSonuc.onerilen_isletme==="cicekci"?"🌹 Çiçekçi":ocrSonuc.onerilen_isletme==="kuru_temizleme"?"👔 K.Temizleme":ocrSonuc.onerilen_isletme?"🏢 Ortak":null},
               ].filter(x=>x.v).map(x=>(<div key={x.l} style={{display:"flex",gap:8,fontSize:12}}>
                 <span style={{color:"#999",minWidth:70}}>{x.l}:</span>
-                <span style={{color:x.l==="İşletme"?"#ffa500":"#fff",fontWeight:600}}>{x.v}</span>
+                <span style={{color:x.l==="İşletme"?"#ffa500":"#333",fontWeight:600}}>{x.v}</span>
               </div>))}
             </div>
             {ocrSonuc.kalemler?.length>0&&<div style={{marginTop:8}}>
@@ -2012,7 +2116,7 @@ function CMusteriler({onSiparisAc}){
   };
 
   const ozelGunKaydet=async()=>{
-    if(!ozelGunForm.gun_adi||!ozelGunForm.tarih)return alert("Gün adı ve tarih gerekli!");
+    if(!ozelGunForm.gun_adi||!ozelGunForm.tarih)return toast("Gün adı ve tarih gerekli!","uyari");
     // Bu yıl için hatırlatma oluştur
     const buYilTarih=new Date().getFullYear()+"-"+ozelGunForm.tarih.slice(5);
     const gectiMi=new Date(buYilTarih)<new Date();
@@ -2036,7 +2140,7 @@ function CMusteriler({onSiparisAc}){
   const filtreli=musteriler.filter(m=>m.ad_soyad?.toLowerCase().includes(ara.toLowerCase())||m.telefon?.includes(ara));
   const toplamCiro=gecmis.reduce((t,s)=>t+s.toplam_tutar,0);
 
-  return(<div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20}}>
+  return(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
     <div>
       <input value={ara} onChange={e=>setAra(e.target.value)} placeholder="🔍 Müşteri ara..." style={{...inp,marginBottom:10}}/>
       <div style={{maxHeight:"calc(100vh-220px)",overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
@@ -2235,7 +2339,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
   };
 
   const kaydet=async()=>{
-    if(!form.musteri_adi)return alert("Müşteri adı gerekli!");
+    if(!form.musteri_adi)return toast("Müşteri adı gerekli!","uyari");
     const toplam=kalemler.reduce((t,k)=>t+k.toplam,0);
     const{data:s}=await supabase.from("cicek_siparisler").insert({
       ...form, kalemler:JSON.stringify(kalemler), toplam_tutar:toplam, odeme_turu:form.odeme_turu||"nakit", kullanici_id:k?.id
@@ -2327,7 +2431,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
 
   const waBildir=(s)=>{
     const tel=s.musteri_tel?.replace(/\D/g,"").replace(/^0/,"");
-    if(!tel){alert("Müşteri telefonu yok!");return;}
+    if(!tel){toast("Müşteri telefonu yok!","uyari");return;}
     const durum=s.durum==="hazir"?"✅ Siparişiniz HAZIR! Teslim için bekliyoruz.":s.durum==="hazirlaniyor"?"🔧 Hazırlanıyor, yakında hazır.":"🌹 Siparişiniz alındı.";
     const mesaj=`Merhaba ${s.musteri_adi}! 🌹\n\n${durum}${s.teslimat_tarihi?`\n📅 Teslimat: ${new Date(s.teslimat_tarihi).toLocaleDateString("tr-TR")}${s.teslimat_saati?" — "+s.teslimat_saati:""}`:""}${s.teslimat_adresi?`\n📍 ${s.teslimat_adresi}`:""}\n\nTeşekkürler 🌸`;
     window.open(`whatsapp://send?phone=90${tel}&text=${encodeURIComponent(mesaj)}`,"_blank");
@@ -2335,14 +2439,14 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
 
   const waTeslim=(s)=>{
     const tel=s.musteri_tel?.replace(/\D/g,"").replace(/^0/,"");
-    if(!tel){alert("Müşteri telefonu yok!");return;}
+    if(!tel){toast("Müşteri telefonu yok!","uyari");return;}
     const mesaj=`Merhaba ${s.musteri_adi}! 🌹\n\n📦 Siparişiniz teslim edildi!\n\nBizi tercih ettiğiniz için teşekkür ederiz! 💝\nYorumunuz bizim için çok değerli.`;
     window.open(`whatsapp://send?phone=90${tel}&text=${encodeURIComponent(mesaj)}`,"_blank");
   };
 
   const kuryeWA=(s, kurye)=>{
     const tel=kurye?.replace(/\D/g,"").replace(/^0/,"");
-    if(!tel){alert("Kurye telefonu girin!");return;}
+    if(!tel){toast("Kurye telefonu girin!","uyari");return;}
     const kalemStr=s.kalemler?JSON.parse(s.kalemler||"[]").map(x=>`• ${x.urun_adi} x${x.miktar}`).join("\n"):"";
     const mesaj=`🚚 *Teslimat Görevi*\n\n👤 Müşteri: ${s.musteri_adi}\n📞 Tel: ${s.musteri_tel||"-"}\n📍 Adres: ${s.teslimat_adresi||"-"}\n⏰ Saat: ${s.teslimat_saati||"Belirtilmedi"}\n\n${kalemStr?`📦 Ürünler:\n${kalemStr}\n\n`:""}💰 Tutar: ${new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2}).format(s.toplam_tutar||0)} ₺\nÖdeme: ${s.odeme_turu||"Nakit"}\n\n🗺️ Harita: https://maps.google.com/?q=${encodeURIComponent(s.teslimat_adresi||"")}`;
     window.open(`whatsapp://send?phone=90${tel}&text=${encodeURIComponent(mesaj)}`,"_blank");
@@ -2445,7 +2549,7 @@ function CSiparisler({k, onGelMusteri, onGelMusteriTemizle}){
         {(form.musteri_adi||kalemler.length>0)&&k?.id&&<button onClick={async()=>{
           await taslakKaydet("siparis_formu",{form,kalemler},k.id);
           setTaslakBilgi({cihaz:navigator.userAgent.includes('Mobile')?'telefon':'bilgisayar',tarih:new Date().toISOString()});
-          alert("✅ Taslak kaydedildi! Diğer cihazdan açtığınızda devam edebilirsiniz.");
+          toast("Taslak kaydedildi! Diğer cihazdan devam edebilirsiniz.","basari");
         }} style={{...kbtn,color:"#d97706",borderColor:"#fcd34d",background:"#fffbeb"}}>
           💾 Taslak Kaydet
         </button>}
@@ -2718,7 +2822,7 @@ function HesapAyar(){
   useEffect(()=>{yukle();}, []);
 
   const kaydet=async()=>{
-    if(!form.hesap_adi)return alert("Hesap adı girin!");
+    if(!form.hesap_adi)return toast("Hesap adı girin!","uyari");
     await supabase.from("hesap_adlari").insert({
       hesap_adi:form.hesap_adi, hesap_turu:form.hesap_turu, isletme:form.isletme,
       aktif:true,

@@ -6,6 +6,9 @@ const para = (n) => new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2 })
 const tarih = (d) => d ? new Date(d).toLocaleDateString("tr-TR") : "-";
 const bugun = () => new Date().toISOString().split("T")[0];
 
+// Toast — App.jsx'teki global toast fonksiyonunu kullan
+const toast = (mesaj, tip, sure) => { if (typeof window !== "undefined" && window.toast) window.toast(mesaj, tip, sure); };
+
 // WhatsApp telefon temizleme
 const waTel = (tel) => {
   if (!tel) return "";
@@ -405,7 +408,7 @@ function ExcelButon({ tarihBas, tarihBit }) {
   const indir = async () => {
     setYukleniyor(true);
     try { await ktExcelIndir(tarihBas, tarihBit); }
-    catch (e) { alert("Excel hatası: " + e.message); }
+    catch (e) { toast("Excel hatası: " + e.message, "hata"); }
     finally { setYukleniyor(false); }
   };
   return (
@@ -523,7 +526,7 @@ function fisCiktisi(fis, kalemler, musteri, toplam, indirimli, odeme, iskonto, a
   </body></html>`;
 
   const win = w || window.open("about:blank", "_blank", "width=400,height=750,scrollbars=yes");
-  if (!win) { alert("⚠️ Popup engellendi! Tarayıcı adres çubuğundaki popup izin simgesine tıklayın."); return; }
+  if (!win) { toast("Popup engellendi! Tarayıcı popup izinlerini kontrol edin.", "uyari"); return; }
   win.document.open();
   win.document.write(html);
   win.document.close();
@@ -794,14 +797,14 @@ export function WhatsAppMerkezi() {
 
   const tekGonder = (musteri) => {
     const tel = musteri.telefon?.replace(/\D/g,"").slice(-10);
-    if (!tel) return alert("Telefon numarası yok!");
+    if (!tel) return toast("Telefon numarası yok!", "uyari");
     const m = mesajOlustur(musteri);
     window.open(`https://wa.me/90${tel}?text=${encodeURIComponent(m)}`, "_blank");
   };
 
   const tumunuGonder = () => {
-    if (!secili.length) return alert("Müşteri seçin!");
-    if (!mesaj.trim()) return alert("Mesaj yazın!");
+    if (!secili.length) return toast("Müşteri seçin!", "uyari");
+    if (!mesaj.trim()) return toast("Mesaj yazın!", "uyari");
     if (!confirm(`${secili.length} müşteriye mesaj gönderilecek. Devam?`)) return;
     secili.forEach((id, i) => {
       const m = musteriler.find(x => x.id === id);
@@ -1424,7 +1427,7 @@ export function KTFisAc({ kullanici, onTamamla, onYeniFis }) {
   const musteriSec = (m) => { setMusteri(m); setMusteriAra(m.ad_soyad); setMusteriler([]); setAdresInput(m.adres || ""); };
 
   const musteriKaydet = async () => {
-    if (!yeni.ad_soyad) return alert("Ad Soyad zorunlu!");
+    if (!yeni.ad_soyad) return toast("Ad Soyad zorunlu!", "uyari");
     const { data } = await supabase.from("musteriler").insert(yeni).select().single();
     musteriSec(data); setYeniMod(false); setAdim(2);
   };
@@ -1465,7 +1468,7 @@ export function KTFisAc({ kullanici, onTamamla, onYeniFis }) {
   const fisOlustur = async () => {
     // ⚠️ Popup blocker bypass: window.open kullanıcı tıklamasıyla senkron çağrılmalı
     const printWin = window.open("about:blank", "_blank", "width=400,height=700,scrollbars=yes");
-    if (!printWin) { alert("⚠️ Popup engellendi! Tarayıcı adres çubuğundaki izin simgesine tıklayın."); return; }
+    if (!printWin) { toast("Popup engellendi! Tarayıcı popup izinlerini kontrol edin.", "uyari"); return; }
     printWin.document.write("<html><body style='font-family:sans-serif;padding:20px;text-align:center;'><p>⏳ Fiş hazırlanıyor...</p></body></html>");
 
     try {
@@ -1599,7 +1602,7 @@ export function KTFisAc({ kullanici, onTamamla, onYeniFis }) {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={async () => {
-                        if (!yeni.ad_soyad) return alert("Ad Soyad zorunlu!");
+                        if (!yeni.ad_soyad) return toast("Ad Soyad zorunlu!", "uyari");
                         const { data } = await supabase.from("musteriler").update(yeni).eq("id", musteri.id).select().single();
                         setMusteri({ ...musteri, ...yeni });
                         setYeniMod(false);
@@ -1716,7 +1719,7 @@ export function KTFisAc({ kullanici, onTamamla, onYeniFis }) {
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <button onClick={() => setAdim(1)} style={kbtn}>← Geri</button>
-            <button onClick={() => kalemler.length > 0 ? setAdim(3) : alert("En az bir ürün ekleyin!")} style={abtn}>Ödemeye Geç →</button>
+            <button onClick={() => kalemler.length > 0 ? setAdim(3) : toast("En az bir ürün ekleyin!", "uyari")} style={abtn}>Ödemeye Geç →</button>
           </div>
         </div>
       )}
@@ -1926,7 +1929,7 @@ export function KTFisler({ kullanici }) {
   const tekrarBas = async (fis, e) => {
     e.stopPropagation();
     const printWin = window.open("about:blank", "_blank", "width=400,height=700,scrollbars=yes");
-    if (!printWin) { alert("⚠️ Popup engellendi!"); return; }
+    if (!printWin) { toast("Popup engellendi!", "uyari"); return; }
     printWin.document.write("<html><body style='font-family:sans-serif;padding:20px;text-align:center;'><p>⏳ Yükleniyor...</p></body></html>");
     try {
       const { data: k } = await supabase.from("kt_fis_kalemleri").select("*").eq("fis_id", fis.id);
@@ -2023,9 +2026,9 @@ export function KTFisler({ kullanici }) {
                 <span style={{ color: "#374151", fontSize: 12, alignSelf: "center" }}>{seciliFisler.length} seçili</span>
                 <button onClick={() => setSeciliFisler(filtreli.filter(f => f.musteriler?.telefon).map(f => f.id))} style={{ ...kbtn, fontSize: 11 }}>Tümünü Seç</button>
                 <button onClick={() => {
-                  if (!seciliFisler.length) return alert("Fiş seçin!");
+                  if (!seciliFisler.length) return toast("Fiş seçin!", "uyari");
                   const secililer = filtreli.filter(f => seciliFisler.includes(f.id) && f.musteriler?.telefon);
-                  if (!secililer.length) return alert("Seçili fişlerde telefon numarası yok!");
+                  if (!secililer.length) return toast("Seçili fişlerde telefon numarası yok!", "uyari");
                   // Kuyruğu hazırla - sıralı gönderim modal'ı açılacak
                   setWaKuyruk(secililer);
                   setWaIndex(0);
@@ -2090,7 +2093,7 @@ export function KTFisler({ kullanici }) {
                       } else {
                         setWaKuyruk([]);
                         setWaIndex(0);
-                        alert("✅ Tüm mesajlar gönderildi!");
+                        toast("Tüm mesajlar gönderildi!", "basari");
                       }
                     }} style={{ ...abtn, flex: 1, fontSize: 14, padding: 12, background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                       📱 Gönder ve Sonraki →
@@ -2298,7 +2301,7 @@ function FisDetayModal({ fis, kalemler, onKapat, kullanici }) {
       return;
     }
 
-    if (!seciliKalemler.length) return alert("En az bir ürün seçin!");
+    if (!seciliKalemler.length) return toast("En az bir ürün seçin!", "uyari");
     const onay = window.confirm(`Teslim onaylansın mı?\n\n${seciliKalemler.length} ürün teslim edilecek.\nDevam?`);
     if (!onay) return;
     await supabase.from("kt_fis_kalemleri").update({ durum: "teslim_edildi" }).in("id", seciliKalemler);
@@ -2341,7 +2344,7 @@ function FisDetayModal({ fis, kalemler, onKapat, kullanici }) {
       nakit_indirim_yuzde: 0,
       teslim_tarihi: null,
     }).eq("id", fis.id);
-    alert(`✅ Fiş #${fisState.fis_no} iptal edildi.`);
+    toast("Fiş #" + fisState.fis_no + " iptal edildi.", "basari");
     onKapat();
   };
 
@@ -2393,7 +2396,7 @@ function FisDetayModal({ fis, kalemler, onKapat, kullanici }) {
             )}
             <button onClick={() => {
               const pw = window.open("about:blank","_blank","width=400,height=700,scrollbars=yes");
-              if (!pw) { alert("⚠️ Popup engellendi!"); return; }
+              if (!pw) { toast("Popup engellendi!", "uyari"); return; }
               pw.document.write("<html><body style='font-family:sans-serif;padding:20px;text-align:center;'><p>⏳ Yükleniyor...</p></body></html>");
               const ayarlar = {};
               supabase.from("kt_ayarlar").select("*").then(({data}) => {
@@ -2666,12 +2669,12 @@ export function KTTeslim({ kullanici }) {
   }, [fis?.id]);
 
   const fisBul = async () => {
-    if (!fisNo.trim()) return alert("Fiş no veya barkod girin!");
+    if (!fisNo.trim()) return toast("Fiş no veya barkod girin!", "uyari");
     const { data: f } = await supabase.from("kt_fisler")
       .select("*, musteriler(*)")
       .or(`fis_no.eq.${fisNo.trim()},barkod.eq.${fisNo.trim()}`)
       .single();
-    if (!f) return alert("Fiş bulunamadı!");
+    if (!f) return toast("Fiş bulunamadı!", "uyari");
     setFis(f);
     // Tüm kalemleri getir (teslim edilenler de dahil - durum görünsün)
     const { data: k } = await supabase.from("kt_fis_kalemleri").select("*").eq("fis_id", f.id);
@@ -2691,7 +2694,7 @@ export function KTTeslim({ kullanici }) {
 
     // Teslim edilecek ürün var ama seçilmemişse uyar
     if (bekleyenler.length > 0 && !secili.length) {
-      return alert("Teslim edilecek ürünleri seçin!");
+      return toast("Teslim edilecek ürünleri seçin!", "uyari");
     }
 
     const nakit_indirimli = fis.indirimli_tutar || fis.toplam_tutar;
@@ -2730,7 +2733,7 @@ export function KTTeslim({ kullanici }) {
 
     await supabase.from("kt_fisler").update(guncelleme).eq("id", fis.id);
 
-    alert("✅ Teslim ve ödeme kaydedildi!" + (nakit_indirim_yapildi ? `\n💝 ${para((fis.toplam_tutar||0)-nakit_indirimli)} nakit indirim uygulandı!` : "") + (nakitFisKesildi ? "\n🧾 Nakit fişi kesildi olarak işaretlendi." : ""));
+    toast("Teslim ve ödeme kaydedildi!", "basari");
     setFis(null); setFisNo(""); setKalemler([]); setSecili([]); setNakitFisKesildi(false);
   };
 
@@ -2964,7 +2967,7 @@ export function KTMusteriler() {
   };
 
   const duzenleKaydet = async () => {
-    if (!duzenleForm.ad_soyad) return alert("Ad Soyad zorunlu!");
+    if (!duzenleForm.ad_soyad) return toast("Ad Soyad zorunlu!", "uyari");
     const { data } = await supabase.from("musteriler").update(duzenleForm).eq("id", secili.id).select().single();
     const guncellenmis = { ...secili, ...duzenleForm };
     setSecili(guncellenmis);
@@ -3725,7 +3728,7 @@ export function KTAyarlar() {
   const logoYukle = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 200 * 1024) { alert("Logo max 200KB olmalı!"); return; }
+    if (file.size > 200 * 1024) { toast("Logo max 200KB olmalı!", "uyari"); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const logoData = ev.target.result;
@@ -4114,7 +4117,7 @@ export function KTAyarlar() {
                   sayac++;
                 }
               }
-              alert(`✅ ${sayac} fiş güncellendi!`);
+              toast(sayac + " fiş güncellendi!", "basari");
             }} style={{ ...abtn, width: "100%" }}>
               🔧 Eski Fişleri Otomatik Düzelt
             </button>
@@ -5254,8 +5257,8 @@ export function KTFisDuzenle() {
   };
 
   const kalemEkle = async () => {
-    if (!yeniKalem.urun_adi.trim()) return alert("Ürün adı girin!");
-    if (!yeniKalem.fiyat || +yeniKalem.fiyat <= 0) return alert("Fiyat girin!");
+    if (!yeniKalem.urun_adi.trim()) return toast("Ürün adı girin!", "uyari");
+    if (!yeniKalem.fiyat || +yeniKalem.fiyat <= 0) return toast("Fiyat girin!", "uyari");
     const hizmetBilgi = JSON.stringify([{ hizmet_k: yeniKalem.hizmet.toLowerCase().replace(/\s/g,"_"), hizmet_adi: yeniKalem.hizmet, fiyat: +yeniKalem.fiyat }]);
     const { data: yeni } = await supabase.from("kt_fis_kalemleri").insert({
       fis_id: secili.id,
