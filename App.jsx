@@ -1,6 +1,35 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { KTAnaSayfa, KTFisAc, KTFisler, KTTeslim, KTMusteriler, KTKasaRaporu, KTAyarlar, KTHazirlamaEkrani, KTMusteriSayfasi, KTFisDuzenle, KTHatirlatma, KTAsistan, ArayanPopup, TelefonBarkodGonder, UzaktanYaziciDinleyici, WhatsAppMerkezi, telefonFisYazdir } from "./KT.jsx";
+
+// ── ERROR BOUNDARY — React hata yakalayıcı ──
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null, errorInfo: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { this.setState({ errorInfo }); console.error("React Hata:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f5f6fa",fontFamily:"'Segoe UI',sans-serif",padding:20}}>
+          <div style={{background:"#fff",borderRadius:16,padding:32,maxWidth:500,width:"100%",boxShadow:"0 4px 20px rgba(0,0,0,0.1)",border:"1px solid #fecaca"}}>
+            <div style={{fontSize:48,textAlign:"center",marginBottom:16}}>⚠️</div>
+            <h2 style={{color:"#dc2626",textAlign:"center",margin:"0 0 12px",fontSize:18}}>Bir hata oluştu</h2>
+            <p style={{color:"#666",fontSize:13,textAlign:"center",marginBottom:16}}>Sayfa yüklenirken bir sorun oluştu. Aşağıdaki hata detayını geliştiriciye iletin.</p>
+            <div style={{background:"#fef2f2",borderRadius:10,padding:14,fontSize:12,color:"#991b1b",maxHeight:200,overflow:"auto",wordBreak:"break-all",marginBottom:16}}>
+              <strong>Hata:</strong> {this.state.error?.toString()}<br/>
+              <strong>Konum:</strong> {this.state.errorInfo?.componentStack?.slice(0,500)}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>this.setState({hasError:false,error:null,errorInfo:null})} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"none",background:"#e94560",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:14}}>Tekrar Dene</button>
+              <button onClick={()=>{localStorage.removeItem("kt_modul");window.location.reload();}} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"1px solid #ddd",background:"#fff",color:"#333",cursor:"pointer",fontSize:14}}>Ana Menüye Dön</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 if (typeof window !== "undefined" && !window.responsiveVoice) {
   const s = document.createElement("script");
@@ -3136,7 +3165,7 @@ JSON formatında cevap ver, başka metin ekleme.`;
   </div>);
 }
 
-export default function App(){
+function AppIcerik(){
   // ✅ Sayfa yenilemede oturum korunur
   const [kullanici,setKullanici]=useState(()=>oturumOku());
   const [modul,setModul]=useState(()=>{
@@ -3186,4 +3215,8 @@ export default function App(){
   if(modul==="kuru_temizleme")return <><ArayanPopup/><KuruTemizleme kullanici={kullanici} onGeri={()=>modulSec(null)} onCikis={cikis}/></>;
   if(modul==="gider")return(<Layout baslik="Gider/Finans" emoji="💰" menu={[{k:"gider",i:"💸",l:"Giderler"},{k:"kdv",i:"🧾",l:"KDV Raporu"}]} aktif="gider" setAktif={()=>{}} onGeri={()=>modulSec(null)} onCikis={cikis} kullanici={kullanici}><Gider k={kullanici} isletme="ortak"/></Layout>);
   if(modul==="ayarlar")return <Ayarlar kullanici={kullanici} onGeri={()=>modulSec(null)} onCikis={cikis}/>;
+}
+
+export default function App(){
+  return <ErrorBoundary><AppIcerik/></ErrorBoundary>;
 }
